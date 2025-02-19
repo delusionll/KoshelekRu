@@ -1,4 +1,4 @@
-﻿namespace KoshelekRuWebService;
+﻿namespace Domain;
 
 public sealed record class Message
 {

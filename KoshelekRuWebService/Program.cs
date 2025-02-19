@@ -1,3 +1,5 @@
+using Domain;
+
 using KoshelekRuWebService;
 
 var builder = WebApplication.CreateSlimBuilder();

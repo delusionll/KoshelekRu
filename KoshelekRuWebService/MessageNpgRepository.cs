@@ -2,6 +2,8 @@
 
 using System.Data;
 
+using Domain;
+
 using Npgsql;
 
 using NpgsqlTypes;
