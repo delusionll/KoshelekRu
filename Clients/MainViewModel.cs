@@ -1,12 +1,13 @@
-﻿using CommunityToolkit.Mvvm.Input;
+﻿namespace Clients;
 
+using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 
-namespace Clients;
-
-using System.Windows;
-
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+using Domain;
 
 public class MainViewModel(MessageService messService) : ObservableObject
 {
@@ -14,6 +15,19 @@ public class MainViewModel(MessageService messService) : ObservableObject
     private bool _isSending;
     private readonly MessageService _messageService = messService;
     private ICommand _sendMessageCommand;
+    private RelayCommand toggleListening;
+    private async void PerformToggleListening()
+    {
+        await foreach(var m in _messageService.ConnectAndListenAsync().ConfigureAwait(true))
+        {
+            MessagesList.Add(m);
+        }
+    }
+
+    private async void SendMessage()
+    {
+        await SendMessageAsync().ConfigureAwait(true);
+    }
 
     public string Client1TextBlock
     {
@@ -60,10 +74,8 @@ public class MainViewModel(MessageService messService) : ObservableObject
         }
     }
 
-    public ICommand SendMessageCommand => _sendMessageCommand ??= new RelayCommand(SendMessage);
+    public ObservableCollection<Message> MessagesList { get; } = [];
 
-    private async void SendMessage()
-    {
-        await SendMessageAsync().ConfigureAwait(true);
-    }
+    public ICommand SendMessageCommand => _sendMessageCommand ??= new RelayCommand(SendMessage);
+    public ICommand ToggleListening => toggleListening ??= new RelayCommand(PerformToggleListening);
 }

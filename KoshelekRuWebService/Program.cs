@@ -2,13 +2,23 @@ using Domain;
 
 using KoshelekRuWebService;
 
+using Microsoft.AspNetCore.WebSockets;
+
 var builder = WebApplication.CreateSlimBuilder();
 ConfigureServices(builder.Services);
 var app = builder.Build();
+app.UseWebSockets();
+app.UseMiddleware<WebSocketMiddleware>();
+
+app.MapPost("/ws", async (MyWebSocketManager wsManager, Message message) =>
+{
+    await wsManager.BroadcastAsync(message).ConfigureAwait(false);
+    return Results.Ok();
+});
 
 app.MapPost("/messages", async (Message message) =>
 {
-    if (string.IsNullOrWhiteSpace(message.Content) || message.Content.Length > 128)
+    if(string.IsNullOrWhiteSpace(message.Content) || message.Content.Length > 128)
     {
         return Results.BadRequest("Текст должен быть от 1 до 128 символов");
     }
@@ -17,6 +27,7 @@ app.MapPost("/messages", async (Message message) =>
     {
         var repo = app.Services.GetRequiredService<MessageNpgRepository>();
         var res = await repo.InsertMessageAsync(message).ConfigureAwait(false);
+        var wsHandler = app.Services.GetRequiredService<MyWebSocketManager>();
         return res == 1 ? Results.Created() : Results.BadRequest();
     }
     catch(Exception ex)
@@ -37,4 +48,5 @@ void ConfigureServices(IServiceCollection col)
         .Build();
 
     col.AddSingleton<IConfiguration>(config);
+    col.AddSingleton<MyWebSocketManager>();
 }
