@@ -3,14 +3,14 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.WebSockets;
-using System.Text;
-using System.Text.Json;
 
 public class MyWebSocketManager : WebSocketManager
 {
-    private readonly ConcurrentDictionary<Guid, WebSocket> _sockets = new();
+    private readonly ConcurrentDictionary<Guid, WebSocket> _sockets = [];
 
-    public Guid AddSocket(WebSocket socket)
+    public IReadOnlyDictionary<Guid, WebSocket> Clients => _sockets;
+
+    public Guid Add(WebSocket socket)
     {
         var socketId = Guid.NewGuid();
         _sockets.TryAdd(socketId, socket);
@@ -25,30 +25,18 @@ public class MyWebSocketManager : WebSocketManager
             socket.Dispose();
         }
     }
-
-    public Task SendMessageAsync<T>(Guid socketId, T message)
+    public async Task ListenWebSocket(WebSocket socket)
     {
-        // TODO return bool? 
-        if(_sockets.TryGetValue(socketId, out var socket) && socket.State == WebSocketState.Open)
+        ArgumentNullException.ThrowIfNull(socket);
+
+        // TODO arraypool
+        var buffer = new byte[1024 * 4];
+        while(socket.State == WebSocketState.Open)
         {
-            string jsonMess = JsonSerializer.Serialize(message);
-            byte[] bytes = Encoding.UTF8.GetBytes(jsonMess);
-            return socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
-        }
-
-        return Task.CompletedTask;
-    }
-
-    public async Task BroadcastAsync<T>(T message)
-    {
-        string jsonMessage = JsonSerializer.Serialize(message);
-        byte[] bytes = Encoding.UTF8.GetBytes(jsonMessage);
-
-        foreach(var socket in _sockets.Values)
-        {
-            if(socket.State == WebSocketState.Open)
+            var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None).ConfigureAwait(false);
+            if(result.MessageType == WebSocketMessageType.Close)
             {
-                await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None).ConfigureAwait(false);
             }
         }
     }

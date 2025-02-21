@@ -1,6 +1,7 @@
 ﻿namespace Clients;
 
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 
@@ -16,11 +17,13 @@ public class MainViewModel(MessageService messService) : ObservableObject
     private readonly MessageService _messageService = messService;
     private ICommand _sendMessageCommand;
     private RelayCommand toggleListening;
-    private async void PerformToggleListening()
+    private async void ConnectSocket()
     {
-        await foreach(var m in _messageService.ConnectAndListenAsync().ConfigureAwait(true))
+        await _messageService.ConnectAsync("ws://localhost:5249/ws").ConfigureAwait(true);
+        var res = _messageService.ReceiveMessagesAsync();
+        await foreach (var m in res)
         {
-            MessagesList.Add(m);
+            MessagesList.Add(JsonSerializer.Deserialize<Message>(m));
         }
     }
 
@@ -77,5 +80,5 @@ public class MainViewModel(MessageService messService) : ObservableObject
     public ObservableCollection<Message> MessagesList { get; } = [];
 
     public ICommand SendMessageCommand => _sendMessageCommand ??= new RelayCommand(SendMessage);
-    public ICommand ToggleListening => toggleListening ??= new RelayCommand(PerformToggleListening);
+    public ICommand ToggleListening => toggleListening ??= new RelayCommand(ConnectSocket);
 }

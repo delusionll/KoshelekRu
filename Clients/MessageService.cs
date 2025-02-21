@@ -21,30 +21,32 @@ public class MessageService(HttpClient httpClient, ClientWebSocket wsClient)
         var mess = new Message() { Content = content, SerNumber = _count++ };
         var res = JsonSerializer.Serialize(mess);
         using var jsonContent = new StringContent(res, Encoding.UTF8, "application/json");
-        var response = await _httpClient.PostAsync("http://localhost:5249/messages", jsonContent).ConfigureAwait(false);
+        var response = await _httpClient.PostAsync("http://localhost:5249/messages", jsonContent).ConfigureAwait(true);
 
         response.EnsureSuccessStatusCode();
     }
 
-    public async IAsyncEnumerable<Message> ConnectAndListenAsync()
+    public async Task ConnectAsync(string uri)
     {
-        await _wsClient.ConnectAsync(new Uri("ws://localhost:5249/ws"), _cts.Token).ConfigureAwait(false);
+        try
+        {
+            await _wsClient.ConnectAsync(new Uri(uri), CancellationToken.None).ConfigureAwait(true);
+        }
+        catch(Exception ex)
+        {
+            // ignore
+        }
+    }
 
+    public async IAsyncEnumerable<string> ReceiveMessagesAsync()
+    {
         var buffer = new byte[1024];
         while(_wsClient.State == WebSocketState.Open)
         {
-            var result = await _wsClient.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token).ConfigureAwait(false);
-            if(result.MessageType == WebSocketMessageType.Close)
+            var result = await _wsClient.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None).ConfigureAwait(true);
+            if (result.EndOfMessage)
             {
-                await _wsClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "Закрыто клиентом", _cts.Token).ConfigureAwait(false);
-                break;
-            }
-
-            string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-            var res = JsonSerializer.Deserialize<Message>(message);
-            if(res != null)
-            {
-                yield return res;
+                yield return Encoding.UTF8.GetString(buffer, 0, result.Count);
             }
         }
     }

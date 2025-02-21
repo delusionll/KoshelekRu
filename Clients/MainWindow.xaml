@@ -22,13 +22,13 @@
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center" />
         </StackPanel>
-        <StackPanel>
-            <ListView ItemsSource="{Binding MessagesList}" />
+        <StackPanel ScrollViewer.VerticalScrollBarVisibility="Auto">
             <Button Content="Listen/Stop listening"
                     Command="{Binding ToggleListening}"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Bottom" />
+            <ListView ItemsSource="{Binding MessagesList}"
+                      ScrollViewer.CanContentScroll="True"></ListView>
         </StackPanel>
-        <StackPanel></StackPanel>
     </UniformGrid>
 </Window>
