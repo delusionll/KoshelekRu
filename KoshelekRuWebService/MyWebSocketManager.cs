@@ -73,4 +73,19 @@ internal sealed class MyWebSocketManager(ILogger<MyWebSocketManager> logger) : W
     {
         throw new NotImplementedException();
     }
+
+    public async Task StartListening(WebSocket ws)
+    {
+        Guid id = Add(ws);
+
+        try
+        {
+            MyLogger.Info(logger, $"...listening ws {id}...");
+            await Listen(ws).ConfigureAwait(false);
+        }
+        finally
+        {
+            await RemoveSocket(id).ConfigureAwait(false);
+        }
+    }
 }

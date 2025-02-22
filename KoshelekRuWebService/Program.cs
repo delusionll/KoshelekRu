@@ -22,23 +22,12 @@ app.Map("/ws", async (HttpContext context, MyWebSocketManager wsManager) =>
     if (context.WebSockets.IsWebSocketRequest)
     {
         WebSocket ws = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
-        Guid id = wsManager.Add(ws);
+        await wsManager.StartListening(ws).ConfigureAwait(false);
+        return;
+    }
 
-        try
-        {
-            MyLogger.Info(logger, $"...listening ws {id}...");
-            await wsManager.Listen(ws).ConfigureAwait(false);
-        }
-        finally
-        {
-            await wsManager.RemoveSocket(id).ConfigureAwait(false);
-        }
-    }
-    else
-    {
-        MyLogger.Error(logger, $"bad request for {context.TraceIdentifier}");
-        context.Response.StatusCode = StatusCodes.Status400BadRequest;
-    }
+    MyLogger.Error(logger, $"bad request for {context.TraceIdentifier}");
+    context.Response.StatusCode = StatusCodes.Status400BadRequest;
 });
 
 app.MapGet("/lastmessages", async (MessageNpgRepository repo, DateTime? from, DateTime? to, HttpResponse response) =>
