@@ -5,8 +5,6 @@ using Domain;
 
 using KoshelekRuWebService;
 
-using Microsoft.AspNetCore.Http.HttpResults;
-
 var builder = WebApplication.CreateSlimBuilder();
 ConfigureServices(builder.Services);
 var app = builder.Build();
@@ -73,7 +71,7 @@ app.MapPost("/messages", static async (Message message, MessageNpgRepository rep
 
         return await repoTask == 1 ? Results.Created() : Results.BadRequest();
     }
-    catch (Exception ex)
+    catch (Exception)
     {
         return Results.Problem();
     }

@@ -26,7 +26,7 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
             cmd.Parameters.AddWithValue("@SerNumber", NpgsqlDbType.Integer, mess.SerNumber);
             return await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // TODO log
             throw;
