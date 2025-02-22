@@ -1,5 +1,3 @@
-using System.Buffers;
-using System.IO.Pipelines;
 using System.Net.Mime;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
@@ -77,25 +75,18 @@ app.MapPost("/messages", async (Message message, MessageNpgRepository repo, MyWe
     try
     {
         ConfiguredTaskAwaitable<int> repoTask = repo.InsertMessageAsync(message).ConfigureAwait(false);
+        ReadOnlyMemory<byte> res = JsonSerializer.SerializeToUtf8Bytes(message, MyJsonContext.Default.Message);
+        IEnumerable<Task> sendTasks = wsManager.Clients.Values
+                    .Where(c => c.State == WebSocketState.Open)
+                    .Select(c => c.SendAsync(res, WebSocketMessageType.Text, true, CancellationToken.None).AsTask());
 
-        byte[] arr = ArrayPool<byte>.Shared.Rent(128);
-
-        foreach (WebSocket c in wsManager.Clients.Values)
-        {
-            if (c.State == WebSocketState.Open)
-            {
-                ReadOnlyMemory<byte> res = JsonSerializer.SerializeToUtf8Bytes(message, MyJsonContext.Default.Message);
-                await c.SendAsync(res, WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
-            }
-        }
-
+        await Task.WhenAll(sendTasks).ConfigureAwait(false);
         return await repoTask == 1 ? Results.Created() : Results.BadRequest();
     }
     catch (Exception ex)
     {
         MyLogger.Info(logger, $"Error handling messages controller.", ex);
-        return Results.Problem();
-        throw;
+        return Results.Problem("Error while processing request.");
     }
 });
 
