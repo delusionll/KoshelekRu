@@ -14,8 +14,8 @@ internal sealed class MainViewModel(MessageService messService) : ObservableObje
     private bool _isSending;
     private readonly MessageService _messageService = messService;
     private ICommand _sendMessageCommand;
-    private ICommand _toggleListening;
     private ICommand _getLastMessages;
+    private ICommand _listen;
 
     private async void ConnectSocket()
     {
@@ -80,7 +80,6 @@ internal sealed class MainViewModel(MessageService messService) : ObservableObje
     public ObservableCollection<Message> MessagesList { get; } = [];
 
     public ICommand SendMessageCommand => _sendMessageCommand ??= new RelayCommand(SendMessage);
-    public ICommand ToggleListening => _toggleListening ??= new RelayCommand(ConnectSocket);
 
     public ObservableCollection<Message> LastMessages { get; } = [];
 
@@ -96,4 +95,6 @@ internal sealed class MainViewModel(MessageService messService) : ObservableObje
             }
         }
     }
+
+    public ICommand Listen => _listen ??= new RelayCommand(ConnectSocket);
 }
