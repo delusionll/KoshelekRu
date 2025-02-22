@@ -46,7 +46,7 @@ app.MapGet("/lastmessages", static async (MessageNpgRepository repo, DateTime? f
         messagesList.Add(m);
     }
 
-    return messagesList.Count > 0 ? Results.Content(JsonSerializer.Serialize(messagesList)) : Results.NotFound();
+    return messagesList.Count > 0 ? Results.Content(JsonSerializer.Serialize(messagesList, MyJsonContext.Default.IListMessage)) : Results.NotFound();
 });
 
 app.MapPost("/messages", static async (Message message, MessageNpgRepository repo, MyWebSocketManager wsManager) =>
@@ -64,7 +64,7 @@ app.MapPost("/messages", static async (Message message, MessageNpgRepository rep
             if (c.State == WebSocketState.Open)
             {
                 // TODO arraypool, json compile time serialize
-                byte[] res = JsonSerializer.SerializeToUtf8Bytes(message);
+                byte[] res = JsonSerializer.SerializeToUtf8Bytes(message, MyJsonContext.Default.Message);
                 await c.SendAsync(new ArraySegment<byte>(res), WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
             }
         }
