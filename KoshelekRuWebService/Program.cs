@@ -32,7 +32,7 @@ app.Map("/ws", static async (HttpContext context, MyWebSocketManager wsManager) 
     }
 });
 
-app.MapGet("/lastmessages", async (MessageNpgRepository repo, DateTime? from, DateTime? to) =>
+app.MapGet("/lastmessages", static async (MessageNpgRepository repo, DateTime? from, DateTime? to) =>
 {
     from ??= DateTime.UtcNow.AddMinutes(-10);
     to ??= DateTime.UtcNow;
@@ -81,7 +81,7 @@ app.Run();
 
 static void ConfigureServices(IServiceCollection col)
 {
-    col.AddLogging(logger =>
+    col.AddLogging(static logger =>
     logger
         .AddSimpleConsole()
         .SetMinimumLevel(LogLevel.Trace));
