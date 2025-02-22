@@ -1,4 +1,6 @@
 using System.Buffers;
+using System.IO.Pipelines;
+using System.Net.Mime;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -38,9 +40,9 @@ app.Map("/ws", async (HttpContext context, MyWebSocketManager wsManager) =>
     }
 });
 
-app.MapGet("/lastmessages", async (MessageNpgRepository repo, DateTime? from, DateTime? to) =>
+app.MapGet("/lastmessages", async (MessageNpgRepository repo, DateTime? from, DateTime? to, HttpResponse response) =>
 {
-    MyLogger.Info(logger, "Handling /lastmessages controller...");
+    MyLogger.Info(logger, $"Handling /lastmessages controller.... from:{from}; to: {to}");
     try
     {
         from ??= DateTime.UtcNow.AddMinutes(-10);
@@ -48,23 +50,18 @@ app.MapGet("/lastmessages", async (MessageNpgRepository repo, DateTime? from, Da
         string que = $@"SELECT time, sernumber, content 
                         FROM messages.messages
                         WHERE time BETWEEN @from AND @to";
-        IAsyncEnumerable<Message> lastMessages = repo.GetRawAsync(que, [("@from", from.Value), ("@to", to.Value)]);
-        IList<Message> messagesList = [];
-        await foreach (Message m in lastMessages.ConfigureAwait(false))
-        {
-            messagesList.Add(m);
-        }
 
-        IResult res = messagesList.Count > 0
-            ? Results.Content(JsonSerializer.Serialize(messagesList, MyJsonContext.Default.IListMessage))
-            : Results.NotFound();
-        MyLogger.Info(logger, $".../lastmessages handled.");
-        return res;
+        IAsyncEnumerable<Message> lastMessages = repo.GetRawAsync(que, [("@from", from.Value), ("@to", to.Value)]);
+        response.ContentType = MediaTypeNames.Application.Json;
+        response.StatusCode = StatusCodes.Status200OK;
+        await JsonSerializer.SerializeAsync(response.BodyWriter, lastMessages, MyJsonContext.Default.IAsyncEnumerableMessage).ConfigureAwait(false);
+        await response.BodyWriter.CompleteAsync().ConfigureAwait(false);
     }
     catch (Exception e)
     {
         MyLogger.Error(logger, "Error handling /lastmessages", e);
-        throw;
+        response.StatusCode = StatusCodes.Status500InternalServerError;
+        await response.WriteAsync("Internal Server Error").ConfigureAwait(false);
     }
 });
 
