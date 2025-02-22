@@ -7,6 +7,9 @@ using Domain;
 
 using KoshelekRuWebService;
 
+using Microsoft.AspNetCore.Routing.Constraints;
+using Microsoft.OpenApi.Models;
+
 WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
 ConfigureServices(builder.Services);
 WebApplication app = builder.Build();
@@ -90,6 +93,15 @@ app.MapPost("/messages", async (Message message, MessageNpgRepository repo, MyWe
     }
 });
 
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "KoshelekRuAPI v1");
+    });
+}
+
 try
 {
     app.Run();
@@ -121,4 +133,15 @@ static void ConfigureServices(IServiceCollection col)
     col.AddSingleton<IConfiguration>(config);
     col.AddSingleton<MyWebSocketManager>();
     col.AddSingleton<CancellationTokenSource>();
+    col.AddEndpointsApiExplorer();
+    col.AddSwaggerGen(options =>
+    {
+        options.SwaggerDoc("v1", new OpenApiInfo
+        {
+            Title = "KoshelekRuAPI",
+            Version = "v1",
+        });
+    });
+
+    col.Configure<RouteOptions>(options => options.SetParameterPolicy<RegexInlineRouteConstraint>("regex"));
 }
