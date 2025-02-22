@@ -40,7 +40,9 @@
                                FontWeight="Bold"
                                Margin="0 0 0 5" />
                     <ListBox ItemsSource="{Binding MessagesList}"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.CanContentScroll="True"
+                             MaxHeight="500"/>
                 </StackPanel>
             </Border>
             <StackPanel Grid.Column="1">
@@ -63,7 +65,9 @@
                         Cursor="Hand" />
                 <ListView ItemsSource="{Binding LastMessages}"
                           Margin="0 10 0 0"
-                          ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                          ScrollViewer.CanContentScroll="True" 
+                          MaxHeight="300"/>
             </StackPanel>
         </Grid>
     </Grid>
