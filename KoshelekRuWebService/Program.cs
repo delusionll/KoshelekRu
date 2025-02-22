@@ -34,10 +34,14 @@ app.Map("/ws", static async (HttpContext context, MyWebSocketManager wsManager) 
     }
 });
 
-app.MapGet("/lastmessages", async (MessageNpgRepository repo) =>
+app.MapGet("/lastmessages", async (MessageNpgRepository repo, DateTime? from, DateTime? to) =>
 {
-    string que = "SELECT time, sernumber, content FROM messages.messages WHERE time >= NOW() - INTERVAL '10 minutes';";
-    var lastMessages = repo.GetRawAsync(que);
+    from ??= DateTime.UtcNow.AddMinutes(-10);
+    to ??= DateTime.UtcNow;
+    string que = $@"SELECT time, sernumber, content 
+                    FROM messages.messages
+                    WHERE time BETWEEN @from AND @to";
+    var lastMessages = repo.GetRawAsync(que, [("@from", from.Value), ("@to", to.Value)]);
     IList<Message> messagesList = [];
     await foreach (var m in lastMessages.ConfigureAwait(false))
     {

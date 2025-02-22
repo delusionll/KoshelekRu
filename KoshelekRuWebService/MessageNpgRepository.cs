@@ -40,11 +40,16 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
         return connection;
     }
 
-    internal async IAsyncEnumerable<Message> GetRawAsync(string rawQuery)
+    internal async IAsyncEnumerable<Message> GetRawAsync<T>(string rawQuery, IEnumerable<(string Param, T Value)> parameters) where T : struct
     {
         using var connection = await GetConnectionAsync().ConfigureAwait(false);
         using var cmd = connection.CreateCommand();
         cmd.CommandText = rawQuery;
+        foreach(var p in parameters)
+        {
+            cmd.Parameters.AddWithValue(p.Param, p.Value);
+        }
+
         var res = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
         while(await res.ReadAsync().ConfigureAwait(false))
         {
