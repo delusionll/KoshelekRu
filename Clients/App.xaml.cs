@@ -1,6 +1,5 @@
-﻿using System.Windows;
-
-namespace Clients;
+﻿namespace Clients;
+using System.Windows;
 
 /// <summary>
 /// Interaction logic for App.xaml

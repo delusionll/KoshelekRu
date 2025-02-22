@@ -1,11 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Input;
-
-using System.Windows.Input;
-
-namespace Clients;
-
+﻿namespace Clients;
 using System.Collections.ObjectModel;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 
@@ -14,22 +8,25 @@ using CommunityToolkit.Mvvm.Input;
 
 using Domain;
 
-public class MainViewModel(MessageService messService) : ObservableObject
+internal sealed class MainViewModel(MessageService messService) : ObservableObject
 {
-    private string _client1TextBlock;
+    private string _client1TextBlock = string.Empty;
     private bool _isSending;
     private readonly MessageService _messageService = messService;
     private ICommand _sendMessageCommand;
-    private RelayCommand _toggleListening;
-    private RelayCommand _getLastMessages;
+    private ICommand _toggleListening;
+    private ICommand _getLastMessages;
 
     private async void ConnectSocket()
     {
-        await _messageService.ConnectAsync("ws://localhost:5249/ws").ConfigureAwait(true);
-        var res = _messageService.ReceiveMessagesAsync();
-        await foreach (var m in res)
+        await _messageService.ConnectAsync(new Uri("ws://localhost:5249/ws")).ConfigureAwait(true);
+        IAsyncEnumerable<Message?> res = _messageService.ReceiveMessagesAsync();
+        await foreach (Message? m in res.ConfigureAwait(true))
         {
-            MessagesList.Add(m);
+            if (m != null)
+            {
+                MessagesList.Add(m);
+            }
         }
     }
 
@@ -43,12 +40,12 @@ public class MainViewModel(MessageService messService) : ObservableObject
         get => _client1TextBlock;
         set
         {
-            if(string.IsNullOrEmpty(value))
+            if (string.IsNullOrEmpty(value))
             {
                 return;
             }
 
-            if(value.Length > 128)
+            if (value.Length > 128)
             {
                 MessageBox.Show("string length is more than 128;", "Error", MessageBoxButton.OK);
                 return;
@@ -94,9 +91,12 @@ public class MainViewModel(MessageService messService) : ObservableObject
 
     private async void PerformGetLastMessages()
     {
-        await foreach (var m in _messageService.GetLastMessages().ConfigureAwait(true))
+        await foreach (Message? m in _messageService.GetLastMessages().ConfigureAwait(true))
         {
-            LastMessages.Add(m);
+            if (m != null)
+            {
+                LastMessages.Add(m);
+            }
         }
     }
 }

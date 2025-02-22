@@ -5,17 +5,17 @@ using Domain;
 
 using KoshelekRuWebService;
 
-var builder = WebApplication.CreateSlimBuilder();
+WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
 ConfigureServices(builder.Services);
-var app = builder.Build();
+WebApplication app = builder.Build();
 app.UseWebSockets();
 
 app.Map("/ws", static async (HttpContext context, MyWebSocketManager wsManager) =>
 {
     if (context.WebSockets.IsWebSocketRequest)
     {
-        var ws = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
-        var id = wsManager.Add(ws);
+        WebSocket ws = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
+        Guid id = wsManager.Add(ws);
 
         try
         {
@@ -39,9 +39,9 @@ app.MapGet("/lastmessages", async (MessageNpgRepository repo, DateTime? from, Da
     string que = $@"SELECT time, sernumber, content 
                     FROM messages.messages
                     WHERE time BETWEEN @from AND @to";
-    var lastMessages = repo.GetRawAsync(que, [("@from", from.Value), ("@to", to.Value)]);
+    IAsyncEnumerable<Message> lastMessages = repo.GetRawAsync(que, [("@from", from.Value), ("@to", to.Value)]);
     IList<Message> messagesList = [];
-    await foreach (var m in lastMessages.ConfigureAwait(false))
+    await foreach (Message? m in lastMessages.ConfigureAwait(false))
     {
         messagesList.Add(m);
     }
@@ -58,13 +58,13 @@ app.MapPost("/messages", static async (Message message, MessageNpgRepository rep
 
     try
     {
-        var repoTask = repo.InsertMessageAsync(message).ConfigureAwait(false);
-        foreach (var c in wsManager.Clients.Values)
+        System.Runtime.CompilerServices.ConfiguredTaskAwaitable<int> repoTask = repo.InsertMessageAsync(message).ConfigureAwait(false);
+        foreach (WebSocket c in wsManager.Clients.Values)
         {
             if (c.State == WebSocketState.Open)
             {
                 // TODO arraypool, json compile time serialize
-                var res = JsonSerializer.SerializeToUtf8Bytes(message);
+                byte[] res = JsonSerializer.SerializeToUtf8Bytes(message);
                 await c.SendAsync(new ArraySegment<byte>(res), WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
             }
         }
@@ -83,7 +83,7 @@ static void ConfigureServices(IServiceCollection col)
 {
     col.AddLogging();
     col.AddScoped<MessageNpgRepository>();
-    var config = new ConfigurationBuilder()
+    IConfigurationRoot config = new ConfigurationBuilder()
         .AddUserSecrets<Program>()
         .AddEnvironmentVariables()
         .Build();
