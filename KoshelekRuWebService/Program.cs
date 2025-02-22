@@ -14,14 +14,14 @@ app.UseWebSockets();
 
 app.Map("/ws", static async (HttpContext context, MyWebSocketManager wsManager) =>
 {
-    if(context.WebSockets.IsWebSocketRequest)
+    if (context.WebSockets.IsWebSocketRequest)
     {
         var ws = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
         var id = wsManager.Add(ws);
 
         try
         {
-            await wsManager.ListenWebSocket(ws).ConfigureAwait(false);
+            await MyWebSocketManager.ListenWebSocket(ws).ConfigureAwait(false);
         }
         finally
         {
@@ -47,16 +47,13 @@ app.MapGet("/lastmessages", async (MessageNpgRepository repo, DateTime? from, Da
     {
         messagesList.Add(m);
     }
-    if (messagesList.Count > 0)
-    {
-        return Results.Content(JsonSerializer.Serialize(messagesList));
-    }
-    return Results.NotFound();
+
+    return messagesList.Count > 0 ? Results.Content(JsonSerializer.Serialize(messagesList)) : Results.NotFound();
 });
 
 app.MapPost("/messages", static async (Message message, MessageNpgRepository repo, MyWebSocketManager wsManager) =>
 {
-    if(string.IsNullOrWhiteSpace(message.Content) || message.Content.Length > 128)
+    if (string.IsNullOrWhiteSpace(message.Content) || message.Content.Length > 128)
     {
         return Results.BadRequest("message length is more than 128");
     }
@@ -64,9 +61,9 @@ app.MapPost("/messages", static async (Message message, MessageNpgRepository rep
     try
     {
         var repoTask = repo.InsertMessageAsync(message).ConfigureAwait(false);
-        foreach(var c in wsManager.Clients.Values)
+        foreach (var c in wsManager.Clients.Values)
         {
-            if(c.State == WebSocketState.Open)
+            if (c.State == WebSocketState.Open)
             {
                 // TODO arraypool, json compile time serialize
                 var res = JsonSerializer.SerializeToUtf8Bytes(message);
@@ -76,7 +73,7 @@ app.MapPost("/messages", static async (Message message, MessageNpgRepository rep
 
         return await repoTask == 1 ? Results.Created() : Results.BadRequest();
     }
-    catch(Exception ex)
+    catch (Exception ex)
     {
         return Results.Problem();
     }
@@ -84,7 +81,7 @@ app.MapPost("/messages", static async (Message message, MessageNpgRepository rep
 
 app.Run();
 
-void ConfigureServices(IServiceCollection col)
+static void ConfigureServices(IServiceCollection col)
 {
     col.AddLogging();
     col.AddScoped<MessageNpgRepository>();

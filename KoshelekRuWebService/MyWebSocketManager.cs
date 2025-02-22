@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.WebSockets;
 
-public class MyWebSocketManager : WebSocketManager
+internal class MyWebSocketManager : WebSocketManager
 {
     private readonly ConcurrentDictionary<Guid, WebSocket> _sockets = [];
 
@@ -19,22 +19,23 @@ public class MyWebSocketManager : WebSocketManager
 
     public async Task RemoveSocket(Guid socketId)
     {
-        if(_sockets.TryRemove(socketId, out var socket))
+        if (_sockets.TryRemove(socketId, out var socket))
         {
             await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed", CancellationToken.None).ConfigureAwait(false);
             socket.Dispose();
         }
     }
-    public async Task ListenWebSocket(WebSocket socket)
+
+    public static async Task ListenWebSocket(WebSocket socket)
     {
         ArgumentNullException.ThrowIfNull(socket);
 
         // TODO arraypool
         var buffer = new byte[1024 * 4];
-        while(socket.State == WebSocketState.Open)
+        while (socket.State == WebSocketState.Open)
         {
             var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None).ConfigureAwait(false);
-            if(result.MessageType == WebSocketMessageType.Close)
+            if (result.MessageType == WebSocketMessageType.Close)
             {
                 await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None).ConfigureAwait(false);
             }
