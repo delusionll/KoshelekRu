@@ -15,8 +15,7 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
         try
         {
             // TODO disposeasync configureawait false???
-            await using var connection = new NpgsqlConnection(_connectionStr);
-            await connection.OpenAsync().ConfigureAwait(false);
+            using NpgsqlConnection connection = await GetConnectionAsync().ConfigureAwait(false);
 
             // TODO optimize
             using var cmd = connection.CreateCommand();
@@ -27,10 +26,35 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
             cmd.Parameters.AddWithValue("@SerNumber", NpgsqlDbType.Integer, mess.SerNumber);
             return await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch(Exception ex)
         {
             // TODO log
             throw;
+        }
+    }
+
+    private async Task<NpgsqlConnection> GetConnectionAsync()
+    {
+        var connection = new NpgsqlConnection(_connectionStr);
+        await connection.OpenAsync().ConfigureAwait(false);
+        return connection;
+    }
+
+    internal async IAsyncEnumerable<Message> GetRawAsync(string rawQuery)
+    {
+        using var connection = await GetConnectionAsync().ConfigureAwait(false);
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = rawQuery;
+        var res = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+        while(await res.ReadAsync().ConfigureAwait(false))
+        {
+            var m = new Message()
+            {
+                Time = res.GetDateTime(res.GetOrdinal("time")),
+                SerNumber = res.GetInt32(res.GetOrdinal("sernumber")),
+                Content = res.GetString(res.GetOrdinal("content"))
+            };
+            yield return m;
         }
     }
 }

@@ -9,6 +9,7 @@
         <AnalysisLevel>latest-all</AnalysisLevel>
         <UserSecretsId>5bcf8f51-eab7-432c-804c-51a799ebe696</UserSecretsId>
         <NoWarn>SA1633;SA1101;</NoWarn>
+        <ServerGarbageCollection>true</ServerGarbageCollection>
     </PropertyGroup>
 
     <ItemGroup>

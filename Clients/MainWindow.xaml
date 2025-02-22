@@ -26,9 +26,16 @@
             <Button Content="Listen/Stop listening"
                     Command="{Binding ToggleListening}"
                     HorizontalAlignment="Right"
-                    VerticalAlignment="Bottom" />
+                    VerticalAlignment="Top" />
             <ListView ItemsSource="{Binding MessagesList}"
                       ScrollViewer.CanContentScroll="True"></ListView>
+        </StackPanel>
+        <StackPanel>
+            <Button Content="GetLast10MinMessages"
+                    Command="{Binding GetLastMessages}"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top" />
+            <ListView ItemsSource="{Binding LastMessages}" />
         </StackPanel>
     </UniformGrid>
 </Window>

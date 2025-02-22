@@ -1,4 +1,8 @@
-﻿namespace Clients;
+﻿using CommunityToolkit.Mvvm.Input;
+
+using System.Windows.Input;
+
+namespace Clients;
 
 using System.Collections.ObjectModel;
 using System.Text.Json;
@@ -16,14 +20,16 @@ public class MainViewModel(MessageService messService) : ObservableObject
     private bool _isSending;
     private readonly MessageService _messageService = messService;
     private ICommand _sendMessageCommand;
-    private RelayCommand toggleListening;
+    private RelayCommand _toggleListening;
+    private RelayCommand _getLastMessages;
+
     private async void ConnectSocket()
     {
         await _messageService.ConnectAsync("ws://localhost:5249/ws").ConfigureAwait(true);
         var res = _messageService.ReceiveMessagesAsync();
         await foreach (var m in res)
         {
-            MessagesList.Add(JsonSerializer.Deserialize<Message>(m));
+            MessagesList.Add(m);
         }
     }
 
@@ -80,5 +86,17 @@ public class MainViewModel(MessageService messService) : ObservableObject
     public ObservableCollection<Message> MessagesList { get; } = [];
 
     public ICommand SendMessageCommand => _sendMessageCommand ??= new RelayCommand(SendMessage);
-    public ICommand ToggleListening => toggleListening ??= new RelayCommand(ConnectSocket);
+    public ICommand ToggleListening => _toggleListening ??= new RelayCommand(ConnectSocket);
+
+    public ObservableCollection<Message> LastMessages { get; } = [];
+
+    public ICommand GetLastMessages => _getLastMessages ??= new RelayCommand(PerformGetLastMessages);
+
+    private async void PerformGetLastMessages()
+    {
+        await foreach (var m in _messageService.GetLastMessages().ConfigureAwait(true))
+        {
+            LastMessages.Add(m);
+        }
+    }
 }

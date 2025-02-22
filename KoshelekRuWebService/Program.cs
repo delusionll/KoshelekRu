@@ -5,6 +5,8 @@ using Domain;
 
 using KoshelekRuWebService;
 
+using Microsoft.AspNetCore.Http.HttpResults;
+
 var builder = WebApplication.CreateSlimBuilder();
 ConfigureServices(builder.Services);
 var app = builder.Build();
@@ -30,6 +32,22 @@ app.Map("/ws", static async (HttpContext context, MyWebSocketManager wsManager) 
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
     }
+});
+
+app.MapGet("/lastmessages", async (MessageNpgRepository repo) =>
+{
+    string que = "SELECT time, sernumber, content FROM messages.messages WHERE time >= NOW() - INTERVAL '10 minutes';";
+    var lastMessages = repo.GetRawAsync(que);
+    IList<Message> messagesList = [];
+    await foreach (var m in lastMessages.ConfigureAwait(false))
+    {
+        messagesList.Add(m);
+    }
+    if (messagesList.Count > 0)
+    {
+        return Results.Content(JsonSerializer.Serialize(messagesList));
+    }
+    return Results.NotFound();
 });
 
 app.MapPost("/messages", static async (Message message, MessageNpgRepository repo, MyWebSocketManager wsManager) =>
