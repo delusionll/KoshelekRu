@@ -6,7 +6,7 @@ using System.Windows;
 /// <summary>
 /// Interaction logic for MainWindow.xaml
 /// </summary>
-public partial class MainWindow : Window
+public sealed partial class MainWindow : Window, IDisposable
 {
     private readonly static HttpClient _httpClient = new();
     private readonly ClientWebSocket _webSocketClient = new();
@@ -14,5 +14,10 @@ public partial class MainWindow : Window
     {
         DataContext = new MainViewModel(new MessageService(_httpClient, _webSocketClient));
         InitializeComponent();
+    }
+
+    public void Dispose()
+    {
+        _webSocketClient.Dispose();
     }
 }

@@ -1,4 +1,6 @@
+using System.Buffers;
 using System.Net.WebSockets;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 using Domain;
@@ -9,9 +11,11 @@ WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
 ConfigureServices(builder.Services);
 WebApplication app = builder.Build();
 app.UseWebSockets();
+ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
 
-app.Map("/ws", static async (HttpContext context, MyWebSocketManager wsManager) =>
+app.Map("/ws", async (HttpContext context, MyWebSocketManager wsManager) =>
 {
+    MyLogger.Info(logger, "Handling ws controller...");
     if (context.WebSockets.IsWebSocketRequest)
     {
         WebSocket ws = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
@@ -19,7 +23,8 @@ app.Map("/ws", static async (HttpContext context, MyWebSocketManager wsManager) 
 
         try
         {
-            await MyWebSocketManager.ListenWebSocket(ws).ConfigureAwait(false);
+            MyLogger.Info(logger, $"...listening ws {id}...");
+            await wsManager.Listen(ws).ConfigureAwait(false);
         }
         finally
         {
@@ -28,70 +33,104 @@ app.Map("/ws", static async (HttpContext context, MyWebSocketManager wsManager) 
     }
     else
     {
+        MyLogger.Error(logger, $"bad request for {context.TraceIdentifier}");
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
     }
 });
 
-app.MapGet("/lastmessages", static async (MessageNpgRepository repo, DateTime? from, DateTime? to) =>
+app.MapGet("/lastmessages", async (MessageNpgRepository repo, DateTime? from, DateTime? to) =>
 {
-    from ??= DateTime.UtcNow.AddMinutes(-10);
-    to ??= DateTime.UtcNow;
-    string que = $@"SELECT time, sernumber, content 
-                    FROM messages.messages
-                    WHERE time BETWEEN @from AND @to";
-    IAsyncEnumerable<Message> lastMessages = repo.GetRawAsync(que, [("@from", from.Value), ("@to", to.Value)]);
-    IList<Message> messagesList = [];
-    await foreach (Message? m in lastMessages.ConfigureAwait(false))
+    MyLogger.Info(logger, "Handling /lastmessages controller...");
+    try
     {
-        messagesList.Add(m);
-    }
+        from ??= DateTime.UtcNow.AddMinutes(-10);
+        to ??= DateTime.UtcNow;
+        string que = $@"SELECT time, sernumber, content 
+                        FROM messages.messages
+                        WHERE time BETWEEN @from AND @to";
+        IAsyncEnumerable<Message> lastMessages = repo.GetRawAsync(que, [("@from", from.Value), ("@to", to.Value)]);
+        IList<Message> messagesList = [];
+        await foreach (Message m in lastMessages.ConfigureAwait(false))
+        {
+            messagesList.Add(m);
+        }
 
-    return messagesList.Count > 0 ? Results.Content(JsonSerializer.Serialize(messagesList, MyJsonContext.Default.IListMessage)) : Results.NotFound();
+        IResult res = messagesList.Count > 0
+            ? Results.Content(JsonSerializer.Serialize(messagesList, MyJsonContext.Default.IListMessage))
+            : Results.NotFound();
+        MyLogger.Info(logger, $".../lastmessages handled.");
+        return res;
+    }
+    catch (Exception e)
+    {
+        MyLogger.Error(logger, "Error handling /lastmessages", e);
+        throw;
+    }
 });
 
-app.MapPost("/messages", static async (Message message, MessageNpgRepository repo, MyWebSocketManager wsManager) =>
+app.MapPost("/messages", async (Message message, MessageNpgRepository repo, MyWebSocketManager wsManager) =>
 {
+    MyLogger.Info(logger, "Handling messages controller...");
     if (string.IsNullOrWhiteSpace(message.Content) || message.Content.Length > 128)
     {
+        MyLogger.Info(logger, "...Message is either too long or whitespace.");
         return Results.BadRequest("message length is more than 128");
     }
 
     try
     {
-        System.Runtime.CompilerServices.ConfiguredTaskAwaitable<int> repoTask = repo.InsertMessageAsync(message).ConfigureAwait(false);
+        ConfiguredTaskAwaitable<int> repoTask = repo.InsertMessageAsync(message).ConfigureAwait(false);
+
+        byte[] arr = ArrayPool<byte>.Shared.Rent(128);
+
         foreach (WebSocket c in wsManager.Clients.Values)
         {
             if (c.State == WebSocketState.Open)
             {
-                // TODO arraypool, json compile time serialize
-                byte[] res = JsonSerializer.SerializeToUtf8Bytes(message, MyJsonContext.Default.Message);
-                await c.SendAsync(new ArraySegment<byte>(res), WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
+                ReadOnlyMemory<byte> res = JsonSerializer.SerializeToUtf8Bytes(message, MyJsonContext.Default.Message);
+                await c.SendAsync(res, WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
             }
         }
 
         return await repoTask == 1 ? Results.Created() : Results.BadRequest();
     }
-    catch (Exception)
+    catch (Exception ex)
     {
+        MyLogger.Info(logger, $"Error handling messages controller.", ex);
         return Results.Problem();
+        throw;
     }
 });
 
-app.Run();
+try
+{
+    app.Run();
+    MyLogger.Info(logger, "running app.");
+}
+catch (OperationCanceledException oCe)
+{
+    MyLogger.Info(logger, "Operation cancelled", oCe);
+}
+catch (Exception ex)
+{
+    MyLogger.Error(logger, "something went wronge", ex);
+}
 
 static void ConfigureServices(IServiceCollection col)
 {
     col.AddLogging(static logger =>
     logger
         .AddSimpleConsole()
-        .SetMinimumLevel(LogLevel.Trace));
+        .SetMinimumLevel(LogLevel.Trace))
+        .AddHttpLogging();
 
     col.AddScoped<MessageNpgRepository>();
     IConfigurationRoot config = new ConfigurationBuilder()
-        .AddUserSecrets<Program>()
-        .AddEnvironmentVariables()
-        .Build();
+         .AddUserSecrets<Program>()
+         .AddEnvironmentVariables()
+         .Build();
 
     col.AddSingleton<IConfiguration>(config);
     col.AddSingleton<MyWebSocketManager>();
+    col.AddSingleton<CancellationTokenSource>();
 }

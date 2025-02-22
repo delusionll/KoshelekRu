@@ -8,7 +8,9 @@ using NpgsqlTypes;
 
 internal sealed class MessageNpgRepository(IConfiguration config, ILogger<MessageNpgRepository> logger)
 {
-    private readonly string _connectionStr = config.GetConnectionString("Default") ?? throw new InvalidOperationException("Connection string not found");
+    private const string Ins = @"INSERT INTO messages.messages (id, content, time, sernumber) VALUES (@Id, @Content, @Time, @SerNumber);";
+    private readonly string _connectionStr = config.GetConnectionString("Default")
+                                             ?? throw new InvalidOperationException("Connection string not found");
 
     public async Task<int> InsertMessageAsync(Message mess)
     {
@@ -16,14 +18,7 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
         {
             // TODO disposeasync configureawait false???
             using NpgsqlConnection connection = await GetConnectionAsync().ConfigureAwait(false);
-
-            // TODO optimize
-            using NpgsqlCommand cmd = connection.CreateCommand();
-            cmd.CommandText = "INSERT INTO messages.messages (id, content, time, sernumber) VALUES (@Id, @Content, @Time, @SerNumber);";
-            cmd.Parameters.AddWithValue("@Id", NpgsqlDbType.Uuid, mess.Id);
-            cmd.Parameters.AddWithValue("@Content", NpgsqlDbType.Varchar, mess.Content);
-            cmd.Parameters.AddWithValue("@Time", NpgsqlDbType.Timestamp, mess.Time);
-            cmd.Parameters.AddWithValue("@SerNumber", NpgsqlDbType.Integer, mess.SerNumber);
+            using NpgsqlCommand cmd = GenerateInsertCmd(mess, connection);
             return await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
         catch (Exception)
@@ -33,7 +28,23 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
         }
     }
 
-    internal async IAsyncEnumerable<Message> GetRawAsync<T>(string rawQuery, IEnumerable<(string Param, T Value)> parameters)
+    public int InsertMessage(Message mess)
+    {
+        try
+        {
+            using NpgsqlConnection connection = GetConnection();
+            using NpgsqlCommand cmd = GenerateInsertCmd(mess, connection);
+            return cmd.ExecuteNonQuery();
+        }
+        catch (Exception)
+        {
+            // TODO log
+            throw;
+        }
+    }
+
+    internal async IAsyncEnumerable<Message> GetRawAsync<T>(
+        string rawQuery, IEnumerable<(string Param, T Value)> parameters)
         where T : struct
     {
         using NpgsqlConnection connection = await GetConnectionAsync().ConfigureAwait(false);
@@ -57,10 +68,29 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
         }
     }
 
+    private static NpgsqlCommand GenerateInsertCmd(Message mess, NpgsqlConnection connection)
+    {
+        // TODO optimize
+        NpgsqlCommand cmd = connection.CreateCommand();
+        cmd.CommandText = Ins;
+        cmd.Parameters.AddWithValue("@Id", NpgsqlDbType.Uuid, mess.Id);
+        cmd.Parameters.AddWithValue("@Content", NpgsqlDbType.Varchar, mess.Content);
+        cmd.Parameters.AddWithValue("@Time", NpgsqlDbType.Timestamp, mess.Time);
+        cmd.Parameters.AddWithValue("@SerNumber", NpgsqlDbType.Integer, mess.SerNumber);
+        return cmd;
+    }
+
     private async Task<NpgsqlConnection> GetConnectionAsync()
     {
         var connection = new NpgsqlConnection(_connectionStr);
         await connection.OpenAsync().ConfigureAwait(false);
+        return connection;
+    }
+
+    private NpgsqlConnection GetConnection()
+    {
+        var connection = new NpgsqlConnection(_connectionStr);
+        connection.Open();
         return connection;
     }
 }

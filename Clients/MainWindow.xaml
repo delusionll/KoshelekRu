@@ -28,7 +28,7 @@
                     HorizontalAlignment="Right"
                     VerticalAlignment="Top" />
             <ListView ItemsSource="{Binding MessagesList}"
-                      ScrollViewer.CanContentScroll="True"></ListView>
+                      ScrollViewer.CanContentScroll="True" />
         </StackPanel>
         <StackPanel>
             <Button Content="GetLast10MinMessages"

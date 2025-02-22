@@ -11,7 +11,7 @@
         <NoWarn>SA1633;SA1101;SA1309;</NoWarn>
         <ServerGarbageCollection>true</ServerGarbageCollection>
         <InvariantGlobalization>true</InvariantGlobalization>
-        <NoWarn>CA1515;SA1602;SA1600;SA0001;CA1812</NoWarn>
+        <NoWarn>CA1515;SA1602;SA1600;SA0001;CA1812;SA1101;SA1309;SA1633</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

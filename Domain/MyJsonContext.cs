@@ -1,8 +1,6 @@
-﻿namespace KoshelekRuWebService;
+﻿namespace Domain;
 
 using System.Text.Json.Serialization;
-
-using Domain;
 
 [JsonSerializable(typeof(Message))]
 [JsonSerializable(typeof(IList<Message>))]

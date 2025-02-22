@@ -1,10 +1,11 @@
 ﻿namespace KoshelekRuWebService;
 
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.WebSockets;
 
-internal sealed class MyWebSocketManager : WebSocketManager
+internal sealed class MyWebSocketManager(ILogger<MyWebSocketManager> logger) : WebSocketManager
 {
     private readonly ConcurrentDictionary<Guid, WebSocket> _sockets = [];
 
@@ -16,26 +17,43 @@ internal sealed class MyWebSocketManager : WebSocketManager
 
     public IReadOnlyDictionary<Guid, WebSocket> Clients => _sockets;
 
-    public static async Task ListenWebSocket(WebSocket socket)
+    public async Task Listen(WebSocket socket)
     {
         ArgumentNullException.ThrowIfNull(socket);
 
-        // TODO arraypool
-        byte[] buffer = new byte[1024 * 4];
-        while (socket.State == WebSocketState.Open)
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(256);
+        try
         {
-            WebSocketReceiveResult result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None).ConfigureAwait(false);
-            if (result.MessageType == WebSocketMessageType.Close)
+            while (socket.State == WebSocketState.Open)
             {
-                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None).ConfigureAwait(false);
+                WebSocketReceiveResult result = await socket.ReceiveAsync(buffer, CancellationToken.None)
+                                                            .ConfigureAwait(false);
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None)
+                                .ConfigureAwait(false);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            MyLogger.Error(logger, $"Error while listening socket", ex);
+            throw;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer, true);
         }
     }
 
     public Guid Add(WebSocket socket)
     {
         var socketId = Guid.NewGuid();
-        _sockets.TryAdd(socketId, socket);
+        if (_sockets.TryAdd(socketId, socket))
+        {
+            MyLogger.Info(logger, $"socket with id {socketId} added.");
+        }
+
         return socketId;
     }
 
@@ -43,8 +61,10 @@ internal sealed class MyWebSocketManager : WebSocketManager
     {
         if (_sockets.TryRemove(socketId, out WebSocket? socket))
         {
-            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed", CancellationToken.None).ConfigureAwait(false);
+            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed", CancellationToken.None)
+                        .ConfigureAwait(false);
             socket.Dispose();
+            MyLogger.Info(logger, $"socket with id {socketId} removed.");
         }
     }
 

@@ -8,5 +8,5 @@ public sealed record class Message
 
     public DateTime Time { get; init; } = DateTime.Now;
 
-    public int SerNumber { get; init; }
+    public required int SerNumber { get; init; }
 }

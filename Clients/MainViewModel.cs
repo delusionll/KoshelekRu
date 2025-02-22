@@ -20,13 +20,10 @@ internal sealed class MainViewModel(MessageService messService) : ObservableObje
     private async void ConnectSocket()
     {
         await _messageService.ConnectAsync(new Uri("ws://localhost:5249/ws")).ConfigureAwait(true);
-        IAsyncEnumerable<Message?> res = _messageService.ReceiveMessagesAsync();
-        await foreach (Message? m in res.ConfigureAwait(true))
+        IAsyncEnumerable<Message> res = _messageService.ReceiveMessagesAsync();
+        await foreach (Message m in res.ConfigureAwait(true))
         {
-            if (m != null)
-            {
-                MessagesList.Add(m);
-            }
+            MessagesList.Add(m);
         }
     }
 

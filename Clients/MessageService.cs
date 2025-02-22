@@ -3,6 +3,7 @@
 using System;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Net.Mime;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -20,9 +21,8 @@ internal sealed class MessageService(HttpClient httpClient, ClientWebSocket wsCl
     {
         var mess = new Message() { Content = content, SerNumber = _count++ };
         string res = JsonSerializer.Serialize(mess);
-        using var jsonContent = new StringContent(res, Encoding.UTF8, "application/json");
+        using var jsonContent = new StringContent(res, Encoding.UTF8, MediaTypeNames.Application.Json);
         HttpResponseMessage response = await _httpClient.PostAsync(new Uri("http://localhost:5249/messages"), jsonContent).ConfigureAwait(false);
-
         response.EnsureSuccessStatusCode();
     }
 
@@ -38,7 +38,7 @@ internal sealed class MessageService(HttpClient httpClient, ClientWebSocket wsCl
         }
     }
 
-    public async IAsyncEnumerable<Message?> ReceiveMessagesAsync()
+    public async IAsyncEnumerable<Message> ReceiveMessagesAsync()
     {
         byte[] buffer = new byte[1024];
         while (_wsClient.State == WebSocketState.Open)
@@ -47,7 +47,11 @@ internal sealed class MessageService(HttpClient httpClient, ClientWebSocket wsCl
             if (result.EndOfMessage)
             {
                 string res = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                yield return JsonSerializer.Deserialize<Message>(res);
+                Message? message = JsonSerializer.Deserialize(res, MyJsonContext.Default.Message);
+                if (message != null)
+                {
+                    yield return message;
+                }
             }
         }
     }
