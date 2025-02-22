@@ -81,7 +81,11 @@ app.Run();
 
 static void ConfigureServices(IServiceCollection col)
 {
-    col.AddLogging();
+    col.AddLogging(logger =>
+    logger
+        .AddSimpleConsole()
+        .SetMinimumLevel(LogLevel.Trace));
+
     col.AddScoped<MessageNpgRepository>();
     IConfigurationRoot config = new ConfigurationBuilder()
         .AddUserSecrets<Program>()
