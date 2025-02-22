@@ -16,29 +16,17 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
     {
         try
         {
-            // TODO disposeasync configureawait false???
-            using NpgsqlConnection connection = await GetConnectionAsync().ConfigureAwait(false);
-            using NpgsqlCommand cmd = GenerateInsertCmd(mess, connection);
-            return await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-        }
-        catch (Exception)
-        {
-            // TODO log
-            throw;
-        }
-    }
+            using NpgsqlConnection connection = await GetConnectionAsync().ConfigureAwait(false)
+                ?? throw new InvalidOperationException("no connection");
 
-    public int InsertMessage(Message mess)
-    {
-        try
-        {
-            using NpgsqlConnection connection = GetConnection();
             using NpgsqlCommand cmd = GenerateInsertCmd(mess, connection);
-            return cmd.ExecuteNonQuery();
+            int res = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+            MyLogger.Info(logger, $"insert message {mess.Id} to db.");
+            return res;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // TODO log
+            MyLogger.Error(logger, $"error while inserting message {mess.Id} to db", ex);
             throw;
         }
     }
@@ -47,25 +35,26 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
         string rawQuery, IEnumerable<(string Param, T Value)> parameters)
         where T : struct
     {
-        using NpgsqlConnection connection = await GetConnectionAsync().ConfigureAwait(false);
-        using NpgsqlCommand cmd = connection.CreateCommand();
-        cmd.CommandText = rawQuery;
-        foreach ((string Param, T Value) p in parameters)
-        {
-            cmd.Parameters.AddWithValue(p.Param, p.Value);
-        }
-
-        NpgsqlDataReader res = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
-        while (await res.ReadAsync().ConfigureAwait(false))
-        {
-            var m = new Message()
+            using NpgsqlConnection connection = await GetConnectionAsync().ConfigureAwait(false)
+                ?? throw new InvalidOperationException("no connection");
+            using NpgsqlCommand cmd = connection.CreateCommand();
+            cmd.CommandText = rawQuery;
+            foreach ((string Param, T Value) p in parameters)
             {
-                Time = res.GetDateTime(res.GetOrdinal("time")),
-                SerNumber = res.GetInt32(res.GetOrdinal("sernumber")),
-                Content = res.GetString(res.GetOrdinal("content")),
-            };
-            yield return m;
-        }
+                cmd.Parameters.AddWithValue(p.Param, p.Value);
+            }
+
+            NpgsqlDataReader res = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+            while (await res.ReadAsync().ConfigureAwait(false))
+            {
+                var m = new Message()
+                {
+                    Time = res.GetDateTime(res.GetOrdinal("time")),
+                    SerNumber = res.GetInt32(res.GetOrdinal("sernumber")),
+                    Content = res.GetString(res.GetOrdinal("content")),
+                };
+                yield return m;
+            }
     }
 
     private static NpgsqlCommand GenerateInsertCmd(Message mess, NpgsqlConnection connection)
@@ -80,17 +69,18 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
         return cmd;
     }
 
-    private async Task<NpgsqlConnection> GetConnectionAsync()
+    private async Task<NpgsqlConnection?> GetConnectionAsync()
     {
-        var connection = new NpgsqlConnection(_connectionStr);
-        await connection.OpenAsync().ConfigureAwait(false);
-        return connection;
-    }
-
-    private NpgsqlConnection GetConnection()
-    {
-        var connection = new NpgsqlConnection(_connectionStr);
-        connection.Open();
-        return connection;
+        try
+        {
+            var connection = new NpgsqlConnection(_connectionStr);
+            await connection.OpenAsync().ConfigureAwait(false);
+            return connection;
+        }
+        catch (Exception ex)
+        {
+            MyLogger.Error(logger, $"unable to establish npgsql connection.", ex);
+            return null;
+        }
     }
 }

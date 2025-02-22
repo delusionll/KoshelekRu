@@ -6,7 +6,9 @@
         xmlns:local="clr-namespace:Clients"
         d:DataContext="{d:DesignInstance Type=local:MainViewModel}"
         mc:Ignorable="d"
-        ThemeMode="System">
+        ThemeMode="System"
+        MinHeight="500"
+        MinWidth="500">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -16,8 +18,8 @@
                     Grid.Row="0">
             <TextBox Text="{Binding Client1TextBlock}"
                      Margin="0 0 10 0"
-                     Padding="5" 
-                     Width="300"/>
+                     Padding="5"
+                     Width="300" />
             <Button Content="Send Message"
                     Command="{Binding SendMessageCommand}"
                     Padding="10"
@@ -38,7 +40,7 @@
                                FontWeight="Bold"
                                Margin="0 0 0 5" />
                     <ListBox ItemsSource="{Binding MessagesList}"
-                             BorderThickness="1" />
+                             ScrollViewer.VerticalScrollBarVisibility="Auto" />
                 </StackPanel>
             </Border>
             <StackPanel Grid.Column="1">
@@ -60,7 +62,8 @@
                         BorderThickness="0"
                         Cursor="Hand" />
                 <ListView ItemsSource="{Binding LastMessages}"
-                          Margin="0 10 0 0" />
+                          Margin="0 10 0 0"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto" />
             </StackPanel>
         </Grid>
     </Grid>
