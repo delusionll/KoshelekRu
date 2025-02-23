@@ -1,0 +1,93 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebClients</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        #messages {
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+        }
+
+        #history {
+            border: 1px solid #fff;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+        }
+
+        input, button {
+            margin-top: 10px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Client2</h2>
+    <div id="messages"></div>
+
+    <h3>Client3</h3>
+    <div id="history"></div>
+
+    <input type="text" id="messageInput" placeholder="message up to 128 chars" maxlength="128">
+    <button onclick="sendMessage()">Send</button>
+
+    <h4>10 minutes history</h4>
+    <button onclick="loadHistory()">load history</button>
+
+    <script>
+        const ws = new WebSocket("ws://localhost:5249/ws");
+        const messagesDiv = document.getElementById("messages");
+        const historyDiv = document.getElementById("history");
+        let mCounter = 0;
+
+        ws.onmessage = (event) => {
+            const msgElement = document.createElement("p");
+            msgElement.textContent = event.data;
+            messagesDiv.appendChild(msgElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        };
+
+        function sendMessage() {
+            const input = document.getElementById("messageInput");
+            const text = input.value.trim();
+            if (!text) return;
+            mCounter++;
+
+            fetch("http://localhost:5249/messages", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: text, serNumber: mCounter})
+            }).then(response => {
+                if (response.ok) input.value = "";
+            });
+        }
+
+        function loadHistory() {
+            const to = new Date().toISOString();
+            const from = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+            fetch(`http://localhost:5249/lastmessages?from=${from}&to=${to}`)
+                .then(response => response.json())
+                .then(history => {
+                    historyDiv.innerHTML = "";
+                    history.forEach(msg => {
+                        const msgElement = document.createElement("p");
+                        msgElement.textContent = `${msg.SerNumber}: [${new Date(msg.Time).toLocaleTimeString()}] ${msg.Content}`;
+                        historyDiv.appendChild(msgElement);
+                    });
+                });
+        }
+
+        window.addEventListener("beforeunload", () => ws.close());
+    </script>
+</body>
+</html>

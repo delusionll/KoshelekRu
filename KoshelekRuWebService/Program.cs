@@ -7,6 +7,7 @@ using Domain;
 
 using KoshelekRuWebService;
 
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.OpenApi.Models;
 
@@ -14,6 +15,7 @@ WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
 ConfigureServices(builder.Services);
 WebApplication app = builder.Build();
 app.UseWebSockets();
+app.UseStaticFiles();
 ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
 
 app.Map("/ws", async (HttpContext context, MyWebSocketManager wsManager) =>
