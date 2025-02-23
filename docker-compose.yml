@@ -1,0 +1,26 @@
+services:
+  koshelekruwebservice:
+    image: ${DOCKER_REGISTRY-}koshelekruwebservice
+    build:
+      context: .
+      dockerfile: KoshelekRuWebService/Dockerfile
+    ports:
+    - "8080:5249"
+    environment:
+    - ASPNETCORE_ENVIRONMENT=Development
+    - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=mydb;Username=myuser;Password=mypassword
+    depends_on:
+    - postgres
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: mydb
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+volumes:
+  postgres_data:
+    driver: local

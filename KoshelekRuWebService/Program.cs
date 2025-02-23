@@ -7,7 +7,6 @@ using Domain;
 
 using KoshelekRuWebService;
 
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.OpenApi.Models;
 
@@ -18,6 +17,7 @@ app.UseWebSockets();
 app.UseStaticFiles();
 ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
 
+app.MapGet("/", () => "Hi there!");
 app.Map("/ws", async (HttpContext context, MyWebSocketManager wsManager) =>
 {
     MyLogger.Info(logger, "Handling ws controller...");
@@ -95,8 +95,8 @@ if (app.Environment.IsDevelopment())
 
 try
 {
-    app.Run();
     MyLogger.Info(logger, "running app.");
+    app.Run();
 }
 catch (OperationCanceledException oCe)
 {
