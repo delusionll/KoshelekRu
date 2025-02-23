@@ -61,10 +61,21 @@ internal sealed class MyWebSocketManager(ILogger<MyWebSocketManager> logger) : W
     {
         if (_sockets.TryRemove(socketId, out WebSocket? socket))
         {
-            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed", CancellationToken.None)
-                        .ConfigureAwait(false);
-            socket.Dispose();
-            MyLogger.Info(logger, $"socket with id {socketId} removed.");
+            try
+            {
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed", CancellationToken.None)
+                            .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // ignore
+                MyLogger.Error(logger, $"Error while removing socket {socketId}.", ex);
+            }
+            finally
+            {
+                socket.Dispose();
+                MyLogger.Info(logger, $"socket with id {socketId} removed.");
+            }
         }
     }
 

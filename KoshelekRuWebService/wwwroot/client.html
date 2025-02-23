@@ -44,7 +44,7 @@
     <button onclick="loadHistory()">load history</button>
 
     <script>
-        const ws = new WebSocket("ws://localhost:5249/ws");
+        const ws = new WebSocket(`${window.location.origin.replace(/^http/, "ws")}/ws`);
         const messagesDiv = document.getElementById("messages");
         const historyDiv = document.getElementById("history");
         let mCounter = 0;
@@ -62,10 +62,10 @@
             if (!text) return;
             mCounter++;
 
-            fetch("http://localhost:5249/messages", {
+            fetch("/messages", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content: text, serNumber: mCounter})
+                body: JSON.stringify({ content: text, serNumber: mCounter })
             }).then(response => {
                 if (response.ok) input.value = "";
             });
@@ -75,7 +75,7 @@
             const to = new Date().toISOString();
             const from = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
-            fetch(`http://localhost:5249/lastmessages?from=${from}&to=${to}`)
+            fetch(`/lastmessages?from=${from}&to=${to}`)
                 .then(response => response.json())
                 .then(history => {
                     historyDiv.innerHTML = "";
