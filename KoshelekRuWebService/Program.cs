@@ -115,7 +115,7 @@ static void ConfigureServices(IServiceCollection col)
         .AddHttpLogging();
 
     col.AddScoped<MessageNpgRepository>();
-    IConfigurationRoot config = new ConfigurationBuilder()
+    IConfiguration config = new ConfigurationBuilder()
          .AddUserSecrets<Program>()
          .AddEnvironmentVariables()
          .Build();
