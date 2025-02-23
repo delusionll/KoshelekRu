@@ -12,11 +12,13 @@ using Microsoft.OpenApi.Models;
 
 WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
 ConfigureServices(builder.Services);
+builder.WebHost.UseUrls("http://*:5249");
 WebApplication app = builder.Build();
 app.UseWebSockets();
 app.UseStaticFiles();
 ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
 
+app.MapHealthChecks("/healthz");
 app.MapGet("/", () => "Hi there!");
 app.Map("/ws", async (HttpContext context, MyWebSocketManager wsManager) =>
 {
@@ -84,14 +86,11 @@ app.MapPost("/messages", async (Message message, MessageNpgRepository repo, MyWe
     }
 });
 
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "KoshelekRuAPI v1");
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "KoshelekRuAPI v1");
+});
 
 try
 {
@@ -135,4 +134,5 @@ static void ConfigureServices(IServiceCollection col)
     });
 
     col.Configure<RouteOptions>(options => options.SetParameterPolicy<RegexInlineRouteConstraint>("regex"));
+    col.AddHealthChecks();
 }
