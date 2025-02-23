@@ -120,7 +120,7 @@ static void ConfigureServices(IServiceCollection col)
          .AddEnvironmentVariables()
          .Build();
 
-    col.AddSingleton<IConfiguration>(config);
+    col.AddSingleton(config);
     col.AddSingleton<MyWebSocketManager>();
     col.AddSingleton<CancellationTokenSource>();
     col.AddEndpointsApiExplorer();
