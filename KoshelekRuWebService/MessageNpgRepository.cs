@@ -8,7 +8,7 @@ using NpgsqlTypes;
 
 internal sealed class MessageNpgRepository(IConfiguration config, ILogger<MessageNpgRepository> logger)
 {
-    private const string Ins = @"INSERT INTO messages.messages (id, content, time, sernumber) VALUES (@Id, @Content, @Time, @SerNumber);";
+    private const string Ins = @"INSERT INTO messages (id, content, time, sernumber) VALUES (@Id, @Content, @Time, @SerNumber);";
     private readonly string _connectionStr = config.GetConnectionString("DefaultConnection")
                                              ?? throw new InvalidOperationException("Connection string not found");
 

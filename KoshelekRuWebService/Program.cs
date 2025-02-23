@@ -42,7 +42,7 @@ app.MapGet("/lastmessages", async (MessageNpgRepository repo, DateTime? from, Da
         from ??= DateTime.UtcNow.AddMinutes(-10);
         to ??= DateTime.UtcNow;
         string que = $@"SELECT time, sernumber, content 
-                        FROM messages.messages
+                        FROM messages
                         WHERE time BETWEEN @from AND @to";
 
         IAsyncEnumerable<Message> lastMessages = repo.GetRawAsync(que, [("@from", from.Value), ("@to", to.Value)]);
