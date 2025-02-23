@@ -10,13 +10,13 @@ using KoshelekRuWebService;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.OpenApi.Models;
 
-WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
+var builder = WebApplication.CreateSlimBuilder();
 ConfigureServices(builder.Services);
 builder.WebHost.UseUrls("http://*:5249");
-WebApplication app = builder.Build();
+var app = builder.Build();
 app.UseWebSockets();
 app.UseStaticFiles();
-ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
 app.MapHealthChecks("/healthz");
 app.MapGet("/", () => "Hi there!");
@@ -25,7 +25,7 @@ app.Map("/ws", async (HttpContext context, MyWebSocketManager wsManager) =>
     MyLogger.Info(logger, "Handling ws controller...");
     if (context.WebSockets.IsWebSocketRequest)
     {
-        WebSocket ws = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
+        var ws = await context.WebSockets.AcceptWebSocketAsync().ConfigureAwait(false);
         await wsManager.StartListening(ws).ConfigureAwait(false);
         return;
     }
@@ -41,11 +41,11 @@ app.MapGet("/lastmessages", async (MessageNpgRepository repo, DateTime? from, Da
     {
         from ??= DateTime.UtcNow.AddMinutes(-10);
         to ??= DateTime.UtcNow;
-        string que = $@"SELECT time, sernumber, content 
+        var que = $@"SELECT time, sernumber, content 
                         FROM messages
                         WHERE time BETWEEN @from AND @to";
 
-        IAsyncEnumerable<Message> lastMessages = repo.GetRawAsync(que, [("@from", from.Value), ("@to", to.Value)]);
+        var lastMessages = repo.GetRawAsync(que, [("@from", from.Value), ("@to", to.Value)]);
         response.ContentType = MediaTypeNames.Application.Json;
         response.StatusCode = StatusCodes.Status200OK;
         await JsonSerializer.SerializeAsync(response.BodyWriter, lastMessages, MyJsonContext.Default.IAsyncEnumerableMessage).ConfigureAwait(false);
@@ -70,9 +70,9 @@ app.MapPost("/messages", async (Message message, MessageNpgRepository repo, MyWe
 
     try
     {
-        ConfiguredTaskAwaitable<int> repoTask = repo.InsertMessageAsync(message).ConfigureAwait(false);
+        var repoTask = repo.InsertMessageAsync(message).ConfigureAwait(false);
         ReadOnlyMemory<byte> res = JsonSerializer.SerializeToUtf8Bytes(message, MyJsonContext.Default.Message);
-        IEnumerable<Task> sendTasks = wsManager.Clients.Values
+        var sendTasks = wsManager.Clients.Values
                     .Where(c => c.State == WebSocketState.Open)
                     .Select(c => c.SendAsync(res, WebSocketMessageType.Text, true, CancellationToken.None).AsTask());
 
@@ -81,7 +81,7 @@ app.MapPost("/messages", async (Message message, MessageNpgRepository repo, MyWe
     }
     catch (Exception ex)
     {
-        MyLogger.Info(logger, $"Error handling messages controller.", ex);
+        MyLogger.Error(logger, $"Error handling messages controller.", ex);
         return Results.Problem("Error while processing request.");
     }
 });
@@ -99,7 +99,7 @@ try
 }
 catch (OperationCanceledException oCe)
 {
-    MyLogger.Info(logger, "Operation cancelled", oCe);
+    MyLogger.Info(logger, "Operation cancelled");
 }
 catch (Exception ex)
 {

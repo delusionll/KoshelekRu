@@ -2,27 +2,28 @@
 
     <PropertyGroup>
         <AssemblyVersion>0.0.0.1</AssemblyVersion>
+        <LangVersion>13.0</LangVersion>
         <TargetFramework>net9</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <AnalysisLevel>latest-all</AnalysisLevel>
         <UserSecretsId>5bcf8f51-eab7-432c-804c-51a799ebe696</UserSecretsId>
-        <NoWarn>SA1633;SA1101;SA1309;</NoWarn>
         <ServerGarbageCollection>true</ServerGarbageCollection>
         <InvariantGlobalization>true</InvariantGlobalization>
-        <NoWarn>CA1515;SA1602;SA1600;SA0001;CA1812;SA1101;SA1309;SA1633</NoWarn>
+        <NoWarn>CA1515;SA1602;SA1600;SA0001;CA1812;SA1101;SA1309;SA1633;SA1633;SA1101;SA1309;</NoWarn>
         <DockerComposeProjectPath>..\docker-compose.dcproj</DockerComposeProjectPath>
+        <TieredPGO>true</TieredPGO>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
-        <PackageReference Include="Npgsql" Version="9.0.2" />
+        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="*" />
+        <PackageReference Include="Npgsql" Version="9.0.*" />
         <PackageReference Include="StyleCop.Analyzers.Unstable" Version="*">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.*" />
     </ItemGroup>
 
     <ItemGroup>

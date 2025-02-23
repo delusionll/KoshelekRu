@@ -14,13 +14,15 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
 
     public async Task<int> InsertMessageAsync(Message mess)
     {
+        ArgumentNullException.ThrowIfNull(mess);
+
         try
         {
-            using NpgsqlConnection connection = await GetConnectionAsync().ConfigureAwait(false)
+            using var connection = await GetConnectionAsync().ConfigureAwait(false)
                 ?? throw new InvalidOperationException("no connection");
 
-            using NpgsqlCommand cmd = GenerateInsertCmd(mess, connection);
-            int res = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+            using var cmd = GenerateInsertCmd(mess, connection);
+            var res = await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             MyLogger.Info(logger, $"insert message {mess.Id} to db.");
             return res;
         }
@@ -35,16 +37,16 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
         string rawQuery, IEnumerable<(string Param, T Value)> parameters)
         where T : struct
     {
-        using NpgsqlConnection connection = await GetConnectionAsync().ConfigureAwait(false)
+        await using var connection = await GetConnectionAsync().ConfigureAwait(false)
             ?? throw new InvalidOperationException("no connection");
-        using NpgsqlCommand cmd = connection.CreateCommand();
+        using var cmd = connection.CreateCommand();
         cmd.CommandText = rawQuery;
-        foreach ((string Param, T Value) p in parameters)
+        foreach (var p in parameters)
         {
             cmd.Parameters.AddWithValue(p.Param, p.Value);
         }
 
-        NpgsqlDataReader res = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+        var res = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
         while (await res.ReadAsync().ConfigureAwait(false))
         {
             var m = new Message()
@@ -60,7 +62,7 @@ internal sealed class MessageNpgRepository(IConfiguration config, ILogger<Messag
     private static NpgsqlCommand GenerateInsertCmd(Message mess, NpgsqlConnection connection)
     {
         // TODO optimize
-        NpgsqlCommand cmd = connection.CreateCommand();
+        var cmd = connection.CreateCommand();
         cmd.CommandText = Ins;
         cmd.Parameters.AddWithValue("@Id", NpgsqlDbType.Uuid, mess.Id);
         cmd.Parameters.AddWithValue("@Content", NpgsqlDbType.Varchar, mess.Content);

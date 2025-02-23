@@ -21,24 +21,30 @@ internal sealed class MyWebSocketManager(ILogger<MyWebSocketManager> logger) : W
     {
         ArgumentNullException.ThrowIfNull(socket);
 
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(256);
+        var buffer = ArrayPool<byte>.Shared.Rent(256);
         try
         {
             while (socket.State == WebSocketState.Open)
             {
-                WebSocketReceiveResult result = await socket.ReceiveAsync(buffer, CancellationToken.None)
+                var result = await socket.ReceiveAsync(buffer, CancellationToken.None)
                                                             .ConfigureAwait(false);
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None)
-                                .ConfigureAwait(false);
+                    await socket.CloseAsync(
+                        result.CloseStatus ?? WebSocketCloseStatus.NormalClosure,
+                        result.CloseStatusDescription,
+                        CancellationToken.None)
+                            .ConfigureAwait(false);
+                    break;
                 }
             }
         }
         catch (Exception ex)
         {
             MyLogger.Error(logger, $"Error while listening socket", ex);
-            throw;
+            await socket
+                .CloseAsync(WebSocketCloseStatus.InternalServerError, "Server error", CancellationToken.None)
+                .ConfigureAwait(false);
         }
         finally
         {
@@ -46,20 +52,9 @@ internal sealed class MyWebSocketManager(ILogger<MyWebSocketManager> logger) : W
         }
     }
 
-    public Guid Add(WebSocket socket)
-    {
-        var socketId = Guid.NewGuid();
-        if (_sockets.TryAdd(socketId, socket))
-        {
-            MyLogger.Info(logger, $"socket with id {socketId} added.");
-        }
-
-        return socketId;
-    }
-
     public async Task RemoveSocket(Guid socketId)
     {
-        if (_sockets.TryRemove(socketId, out WebSocket? socket))
+        if (_sockets.TryRemove(socketId, out var socket))
         {
             try
             {
@@ -87,7 +82,7 @@ internal sealed class MyWebSocketManager(ILogger<MyWebSocketManager> logger) : W
 
     public async Task StartListening(WebSocket ws)
     {
-        Guid id = Add(ws);
+        var id = Add(ws);
 
         try
         {
@@ -98,5 +93,16 @@ internal sealed class MyWebSocketManager(ILogger<MyWebSocketManager> logger) : W
         {
             await RemoveSocket(id).ConfigureAwait(false);
         }
+    }
+
+    private Guid Add(WebSocket socket)
+    {
+        var socketId = Guid.NewGuid();
+        if (_sockets.TryAdd(socketId, socket))
+        {
+            MyLogger.Info(logger, $"socket with id {socketId} added.");
+        }
+
+        return socketId;
     }
 }

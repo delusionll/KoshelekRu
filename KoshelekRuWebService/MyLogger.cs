@@ -14,8 +14,8 @@ public static class MyLogger
     new EventId(1, "Error"),
     "{Param1}");
 
-    public static void Info(ILogger logger, string message, Exception? ex = null) => _infoLoggerMessage(
-        logger, message, ex);
+    public static void Info(ILogger logger, string message) => _infoLoggerMessage(
+        logger, message, null);
 
     public static void Error(ILogger logger, string message, Exception? ex = null) => _errorLoggerMessage(
         logger, message, ex);
